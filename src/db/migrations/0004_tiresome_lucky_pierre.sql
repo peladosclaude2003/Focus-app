@@ -1,0 +1,1 @@
+ALTER TABLE `habits` ADD `unit` text DEFAULT 'days' NOT NULL;
