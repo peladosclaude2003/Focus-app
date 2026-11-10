@@ -21,19 +21,11 @@ export interface MiniBarChartProps {
 }
 
 export function MiniBarChart({
-  title = 'This week',
-  subtitle = 'Daily reps',
-  value = '950 reps',
-  delta = '+36%',
-  bars = [
-    { label: 'S', value: 0 },
-    { label: 'M', value: 218 },
-    { label: 'T', value: 167 },
-    { label: 'W', value: 219 },
-    { label: 'T', value: 186 },
-    { label: 'F', value: 160 },
-    { label: 'S', value: 0 },
-  ],
+  title,
+  subtitle,
+  value,
+  delta,
+  bars,
   maxHeight = 70,
 }: MiniBarChartProps) {
   const { colors } = useTheme();
@@ -51,12 +43,14 @@ export function MiniBarChart({
             {subtitle}
           </AppText>
         </View>
-        {delta ? <DeltaChip value={delta} /> : null}
+        {delta ? <DeltaChip value={delta} isPositive={!delta.trim().startsWith('-')} /> : null}
       </View>
 
-      <AppText variant="title" style={styles.valueText}>
-        {value}
-      </AppText>
+      {value ? (
+        <AppText variant="title" style={styles.valueText}>
+          {value}
+        </AppText>
+      ) : null}
 
       <View style={styles.chartRow}>
         {bars.map((bar, idx) => {

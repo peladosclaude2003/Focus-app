@@ -7,7 +7,7 @@ import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { BottomSheet, AppText } from '@/shared/ui';
 import { useTheme, spacing, radius } from '@/shared/theme';
 import type { HabitRow } from '../repository/habits.schema';
-import { formatLongDate } from '@/shared/lib/dates';
+import { formatLongDate, toISODate } from '@/shared/lib/dates';
 
 interface HabitFormSheetProps {
   visible: boolean;
@@ -124,7 +124,7 @@ export function HabitFormSheet({ visible, onClose, habit, onSave }: HabitFormShe
             onPress={() => setShowDatePicker(true)}
           >
             <MaterialCommunityIcons name="calendar" size={20} color={colors.ink} />
-            <AppText>{formatLongDate(date.toISOString().split('T')[0] as any)}</AppText>
+            <AppText>{formatLongDate(toISODate(date))}</AppText>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.dateBtn, { backgroundColor: colors.bg, borderColor: colors.cardBorder }]}

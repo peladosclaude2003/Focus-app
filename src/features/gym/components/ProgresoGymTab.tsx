@@ -1,9 +1,12 @@
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { MiniBarChart, StatTile } from '@/shared/ui';
+import { t } from '@/shared/i18n';
+import { AreaSparkline, MiniBarChart, StatTile } from '@/shared/ui';
 
 import { BodyWeightSection } from './BodyWeightSection';
-import { BodyWeightRow } from '../repository/gym.schema';
+import { ExerciseProgressCard } from './ExerciseProgressCard';
+import type { ExerciseProgress } from '../lib/gymCalculations';
+import type { BodyWeightRow } from '../repository/gym.schema';
 
 interface ProgresoGymTabProps {
   bodyWeights: BodyWeightRow[];
@@ -14,8 +17,12 @@ interface ProgresoGymTabProps {
   historicalTotalReps: number;
   historicalMaxWeight: number;
   weeklyRepsData: { dailyReps: number[]; percentageChange: number };
+  volumeTrend: number[];
+  exerciseProgress: ExerciseProgress[];
   onLogWeight: (kg: number) => Promise<void>;
 }
+
+const DAY_LABELS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
 export function ProgresoGymTab({
   bodyWeights,
@@ -26,47 +33,49 @@ export function ProgresoGymTab({
   historicalTotalReps,
   historicalMaxWeight,
   weeklyRepsData,
+  volumeTrend,
+  exerciseProgress,
   onLogWeight,
 }: ProgresoGymTabProps) {
+  const s = t.gym.progress;
+  const weekReps = weeklyRepsData.dailyReps.reduce((a, b) => a + b, 0);
+  const pct = weeklyRepsData.percentageChange;
+  const currentVolume = volumeTrend[volumeTrend.length - 1] ?? 0;
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* StatTiles (Asistencia, Reps totales, Peso Máx) */}
+      {/* Asistencia, reps totales y peso máximo históricos */}
       <View style={styles.tileRow}>
-        <StatTile icon="calendar-check-outline" value={`${weeklyAttendance}`} label="días/sem" />
-        <StatTile
-          icon="cube-outline"
-          value={historicalTotalReps > 0 ? `${historicalTotalReps}` : '0'}
-          label="reps"
-        />
-        <StatTile
-          icon="trophy-outline"
-          value={historicalMaxWeight > 0 ? `${historicalMaxWeight}` : '0'}
-          label="max kg"
-        />
+        <StatTile icon="calendar-check-outline" value={`${weeklyAttendance}`} label={s.attendance} />
+        <StatTile icon="cube-outline" value={`${historicalTotalReps}`} label={s.reps} />
+        <StatTile icon="trophy-outline" value={`${historicalMaxWeight}`} label={s.maxKg} />
       </View>
 
-      {/* Gráfica Semanal de Repeticiones */}
-      <MiniBarChart
-        title="Esta semana"
-        subtitle="Reps diarias"
-        value={`${weeklyRepsData.dailyReps.reduce((a, b) => a + b, 0)} reps`}
-        delta={
-          weeklyRepsData.percentageChange !== 0
-            ? `${weeklyRepsData.percentageChange > 0 ? '+' : ''}${weeklyRepsData.percentageChange}%`
-            : '0%'
-        }
-        bars={[
-          { label: 'L', value: weeklyRepsData.dailyReps[0] ?? 0 },
-          { label: 'M', value: weeklyRepsData.dailyReps[1] ?? 0 },
-          { label: 'M', value: weeklyRepsData.dailyReps[2] ?? 0 },
-          { label: 'J', value: weeklyRepsData.dailyReps[3] ?? 0 },
-          { label: 'V', value: weeklyRepsData.dailyReps[4] ?? 0 },
-          { label: 'S', value: weeklyRepsData.dailyReps[5] ?? 0 },
-          { label: 'D', value: weeklyRepsData.dailyReps[6] ?? 0 },
-        ]}
+      {/* Progreso real: peso tope por ejercicio a lo largo de las sesiones */}
+      <ExerciseProgressCard items={exerciseProgress} />
+
+      {/* Tendencia de volumen semanal */}
+      <AreaSparkline
+        title={s.volumeTitle}
+        subtitle={s.volumeSub}
+        value={s.volumeValue(currentVolume)}
+        data={volumeTrend}
+        height={90}
       />
 
-      {/* Sección de Peso Corporal & Media Móvil */}
+      {/* Repeticiones por día de la semana actual */}
+      <MiniBarChart
+        title={s.thisWeek}
+        subtitle={s.dailyReps}
+        value={s.repsValue(weekReps)}
+        delta={pct !== 0 ? `${pct > 0 ? '+' : ''}${pct}%` : undefined}
+        bars={DAY_LABELS.map((label, i) => ({
+          label,
+          value: weeklyRepsData.dailyReps[i] ?? 0,
+        }))}
+      />
+
+      {/* Peso corporal y media móvil */}
       <BodyWeightSection
         records={bodyWeights}
         movingAverage={movingAverageKg}

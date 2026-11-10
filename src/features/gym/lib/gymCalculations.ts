@@ -98,3 +98,76 @@ export function calculateWeeklyAttendance(workoutDates: ISODate[], refDate: ISOD
     return diff >= 0 && diff < sevenDaysMs;
   }).length;
 }
+
+export interface ProgressWorkout {
+  id: string;
+  startTime: number; // epoch ms
+}
+
+export interface ProgressSet extends MinimalSet {
+  workoutId: string;
+  exerciseId: string;
+  completed: boolean;
+}
+
+export interface ExerciseProgress {
+  exerciseId: string;
+  name: string;
+  /** Peso máximo histórico (PR de peso). */
+  bestWeight: number;
+  /** Peso más alto levantado en la última sesión del ejercicio. */
+  lastTopWeight: number;
+  /** Diferencia en kg vs la sesión anterior (null si solo hay una sesión). */
+  deltaKg: number | null;
+  /** Peso máximo por sesión, de la más antigua a la más reciente (máx. 8). */
+  history: number[];
+  sessions: number;
+  lastDateMs: number;
+}
+
+/**
+ * Progreso por ejercicio: para cada ejercicio con series completadas calcula
+ * su mejor peso, el peso tope de la última sesión y su variación frente a la
+ * sesión anterior. Ordenado por el ejercicio entrenado más recientemente.
+ */
+export function calculateExerciseProgress(
+  workoutsList: ProgressWorkout[],
+  setsList: ProgressSet[],
+  exerciseNames: Record<string, string>,
+  maxHistory = 8,
+): ExerciseProgress[] {
+  const workoutTime = new Map(workoutsList.map((w) => [w.id, w.startTime]));
+
+  // exerciseId -> (workoutId -> peso tope en esa sesión)
+  const byExercise = new Map<string, Map<string, number>>();
+  for (const s of setsList) {
+    if (!s.completed || s.reps <= 0) continue;
+    if (!workoutTime.has(s.workoutId)) continue;
+    const sessions = byExercise.get(s.exerciseId) ?? new Map<string, number>();
+    sessions.set(s.workoutId, Math.max(sessions.get(s.workoutId) ?? 0, s.weight));
+    byExercise.set(s.exerciseId, sessions);
+  }
+
+  const result: ExerciseProgress[] = [];
+  for (const [exerciseId, sessions] of byExercise) {
+    const ordered = [...sessions.entries()]
+      .map(([workoutId, top]) => ({ time: workoutTime.get(workoutId) ?? 0, top }))
+      .sort((a, b) => a.time - b.time);
+    const last = ordered[ordered.length - 1];
+    const prev = ordered[ordered.length - 2];
+    if (!last) continue;
+
+    result.push({
+      exerciseId,
+      name: exerciseNames[exerciseId] ?? 'Ejercicio',
+      bestWeight: Math.max(...ordered.map((o) => o.top)),
+      lastTopWeight: last.top,
+      deltaKg: prev ? Number((last.top - prev.top).toFixed(2)) : null,
+      history: ordered.slice(-maxHistory).map((o) => o.top),
+      sessions: ordered.length,
+      lastDateMs: last.time,
+    });
+  }
+
+  return result.sort((a, b) => b.lastDateMs - a.lastDateMs);
+}
