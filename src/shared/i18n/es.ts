@@ -93,6 +93,26 @@ export const es = {
   gym: {
     title: 'Mi gym',
     empty: 'Aquí registrarás tus días de gym, tu peso y tus entrenamientos.',
+    progress: {
+      attendance: 'días/sem',
+      reps: 'reps',
+      maxKg: 'máx kg',
+      thisWeek: 'Esta semana',
+      dailyReps: 'Reps diarias',
+      repsValue: (n: number) => `${n.toLocaleString('es-ES')} reps`,
+      volumeTitle: 'Volumen semanal',
+      volumeSub: 'Últimas 8 semanas (kg × reps)',
+      volumeValue: (kg: number) => `${kg.toLocaleString('es-ES')} kg`,
+      exercisesTitle: 'Progreso por ejercicio',
+      exercisesSub: 'Peso tope por sesión',
+      exercisesEmpty: 'Completa series en un entrenamiento para ver tu progreso aquí.',
+      best: (kg: number) => `PR ${kg} kg`,
+      sessions: (n: number) => (n === 1 ? '1 sesión' : `${n} sesiones`),
+      deltaA11y: (kg: number) =>
+        kg === 0
+          ? 'igual que la sesión anterior'
+          : `${kg > 0 ? 'subió' : 'bajó'} ${Math.abs(kg)} kilos vs la sesión anterior`,
+    },
   },
   ajustes: {
     title: 'Ajustes',

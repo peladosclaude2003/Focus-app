@@ -1,5 +1,6 @@
-import { parseISODate, toISODate, type ISODate } from '../lib/dates';
+import { parseISODate, todayISO, type ISODate } from '../lib/dates';
 import { NotificationService, Channels } from './NotificationService';
+import { occurrencesInWindow, windowDates } from '@/features/hoy/lib/recurrence';
 import type { TaskRow } from '@/features/hoy/repository/tasks.schema';
 
 export const TaskReminderService = {
@@ -60,35 +61,19 @@ export const TaskReminderService = {
     }
   },
 
-  async scheduleRollingWindow(tasks: TaskRow[]) {
-    // Para tareas recurrentes, programamos los próximos 14 días.
-    const today = new Date();
+  /** Cancela cualquier recordatorio pendiente de la tarea (único y de la ventana recurrente). */
+  async cancelAllForTask(task: TaskRow) {
+    await this.cancelForTask(task);
+    await this.cancelRecurringWindow(task.id, windowDates(todayISO()));
+  },
 
+  async scheduleRollingWindow(tasks: TaskRow[]) {
+    // Programa los recordatorios de los próximos días según la regla de recurrencia.
+    const today = todayISO();
     for (const task of tasks) {
       if (!task.time || !task.reminderType) continue;
-
-      // Determinamos fechas aplicables en los próximos 14 días
-      for (let i = 0; i < 14; i++) {
-        const d = new Date(today);
-        d.setDate(d.getDate() + i);
-        const isoDate = toISODate(d) as ISODate;
-
-        let matches = false;
-        if (task.repeatRule === 'daily') {
-          matches = true;
-        } else if (task.repeatRule === 'weekdays') {
-          const day = d.getDay();
-          matches = day >= 1 && day <= 5;
-        } else if (task.repeatRule === 'monthly') {
-          const start = parseISODate(task.date as ISODate);
-          matches = d.getDate() === start.getDate();
-        } else if (task.repeatRule === 'none' && task.date === isoDate) {
-          matches = true;
-        }
-
-        if (matches) {
-          await this.scheduleForTask(task, isoDate);
-        }
+      for (const isoDate of occurrencesInWindow(task, today)) {
+        await this.scheduleForTask(task, isoDate);
       }
     }
   },

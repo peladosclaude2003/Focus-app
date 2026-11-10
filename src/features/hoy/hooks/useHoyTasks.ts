@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { todayISO, toISODate, parseISODate, type ISODate } from '@/shared/lib/dates';
+import { nowISO, todayISO, toISODate, parseISODate, type ISODate } from '@/shared/lib/dates';
 import { haptics } from '@/shared/lib/haptics';
 import { uid } from '@/shared/lib/ids';
 import { startOfMonth, endOfMonth } from 'date-fns';
@@ -98,15 +98,20 @@ export function useHoyTasks(initialDate: ISODate = todayISO()): UseHoyTasksRetur
       done: false,
       repeatRule,
       position: tasksList.length,
-      createdAt: new Date().toISOString(),
+      createdAt: nowISO(),
       notificationId: null,
       reminderType: reminderType === 'none' ? null : reminderType,
     };
 
     await tasksRepository.add(newTask);
     if (newTask.time && newTask.reminderType) {
-      const nid = await TaskReminderService.scheduleForTask(newTask as TaskRow, date);
-      if (nid) await tasksRepository.update(newTask.id, { notificationId: nid });
+      if (repeatRule === 'none') {
+        const nid = await TaskReminderService.scheduleForTask(newTask as TaskRow, date);
+        if (nid) await tasksRepository.update(newTask.id, { notificationId: nid });
+      } else {
+        // Recurrente: recordatorios para los próximos días, no solo el primero.
+        await TaskReminderService.scheduleRollingWindow([newTask as TaskRow]);
+      }
     }
     await loadTasks(selectedDate, monthViewDate);
   };
@@ -124,8 +129,9 @@ export function useHoyTasks(initialDate: ISODate = todayISO()): UseHoyTasksRetur
     haptics.tap();
 
     const task = await tasksRepository.getById(id);
-    if (task && task.notificationId) {
-      await TaskReminderService.cancelForTask(task as TaskRow);
+    if (task) {
+      // Cancela el recordatorio único y los de la ventana recurrente.
+      await TaskReminderService.cancelAllForTask(task);
     }
 
     const updated = {
@@ -138,12 +144,14 @@ export function useHoyTasks(initialDate: ISODate = todayISO()): UseHoyTasksRetur
       notificationId: null as string | null,
     };
 
-    if (updated.time && updated.reminderType) {
-      const nid = await TaskReminderService.scheduleForTask(
-        { ...(task as TaskRow), ...updated },
-        date,
-      );
-      if (nid) updated.notificationId = nid;
+    if (task && updated.time && updated.reminderType) {
+      const merged: TaskRow = { ...task, ...updated };
+      if (repeatRule === 'none') {
+        const nid = await TaskReminderService.scheduleForTask(merged, date);
+        if (nid) updated.notificationId = nid;
+      } else {
+        await TaskReminderService.scheduleRollingWindow([merged]);
+      }
     }
 
     await tasksRepository.update(id, updated);
@@ -154,7 +162,7 @@ export function useHoyTasks(initialDate: ISODate = todayISO()): UseHoyTasksRetur
     haptics.warning();
     const task = await tasksRepository.getById(id);
     if (task) {
-      await TaskReminderService.cancelForTask(task as TaskRow);
+      await TaskReminderService.cancelAllForTask(task);
     }
     await tasksRepository.delete(id);
     await loadTasks(selectedDate, monthViewDate);

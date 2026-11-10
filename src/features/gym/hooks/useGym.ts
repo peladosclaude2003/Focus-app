@@ -6,14 +6,19 @@ import { uid } from '@/shared/lib/ids';
 
 import {
   calculate7DayMovingAverage,
+  calculateExerciseProgress,
   calculateMaxWeight,
   calculateTotalReps,
   calculateWeightDiff,
   calculateWorkoutVolume,
   checkIsPersonalRecord,
+  type ExerciseProgress,
   type MinimalSet,
 } from '../lib/gymCalculations';
-import { calculateWeeklyDailyReps } from '../../inicio/lib/inicioCalculations';
+import {
+  calculate8WeekVolumeTrend,
+  calculateWeeklyDailyReps,
+} from '../../inicio/lib/inicioCalculations';
 import { gymRepository } from '../repository/gym.repository';
 import type { BodyWeightRow, ExerciseRow, SetRow, WorkoutRow } from '../repository/gym.schema';
 
@@ -34,6 +39,10 @@ export interface UseGymReturn {
   historicalTotalReps: number;
   historicalMaxWeight: number;
   weeklyRepsData: { dailyReps: number[]; percentageChange: number };
+  /** Volumen (kg × reps) por semana, últimas 8 semanas. */
+  volumeTrend: number[];
+  /** Progreso de peso por ejercicio, el más reciente primero. */
+  exerciseProgress: ExerciseProgress[];
   weightDiff: number | null;
   loading: boolean;
   // Sesión en vivo
@@ -313,6 +322,10 @@ export function useGym(): UseGymReturn {
     durationMin: w.endTime ? Math.floor((w.endTime - w.startTime) / 60000) : 0,
   }));
   const weeklyRepsData = calculateWeeklyDailyReps(mappedWorkouts, completedHistorical, todayISO());
+  const volumeTrend = calculate8WeekVolumeTrend(mappedWorkouts, completedHistorical, todayISO());
+
+  const exerciseNames = Object.fromEntries(exercises.map((e) => [e.id, e.name]));
+  const exerciseProgress = calculateExerciseProgress(workouts, allSets, exerciseNames);
 
   return {
     workouts,
@@ -327,6 +340,8 @@ export function useGym(): UseGymReturn {
     historicalTotalReps,
     historicalMaxWeight,
     weeklyRepsData,
+    volumeTrend,
+    exerciseProgress,
     weightDiff,
     loading,
     isWorkoutActive,

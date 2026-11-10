@@ -15,10 +15,10 @@ export interface AreaSparklineProps {
 }
 
 export function AreaSparkline({
-  title = 'Volume',
-  subtitle = '8-week trend',
-  value = '363.2k lbs',
-  data = [10, 15, 8, 22, 18, 35, 28, 42],
+  title,
+  subtitle,
+  value,
+  data,
   height = 90,
 }: AreaSparklineProps) {
   const { colors } = useTheme();
