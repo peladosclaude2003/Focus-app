@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { todayISO, toISODate, parseISODate, type ISODate } from '@/shared/lib/dates';
+import { nowISO, todayISO, toISODate, parseISODate, type ISODate } from '@/shared/lib/dates';
 import { haptics } from '@/shared/lib/haptics';
 import { uid } from '@/shared/lib/ids';
 import { startOfMonth, endOfMonth } from 'date-fns';
@@ -39,6 +39,27 @@ export interface UseHoyTasksReturn {
   ) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   toggleTask: (id: string, currentDone: boolean) => Promise<void>;
+}
+
+/**
+ * Programa el recordatorio sin dejar que un fallo de notificaciones (p. ej. permiso
+ * denegado) interrumpa el guardado: antes, si esto lanzaba, la tarea quedaba en SQLite
+ * pero la lista nunca se recargaba y parecía que no se había guardado.
+ */
+async function safeSchedule(task: TaskRow, date: ISODate): Promise<string | null> {
+  try {
+    return await TaskReminderService.scheduleForTask(task, date);
+  } catch {
+    return null;
+  }
+}
+
+async function safeCancel(task: TaskRow): Promise<void> {
+  try {
+    await TaskReminderService.cancelForTask(task);
+  } catch {
+    // el recordatorio pudo no existir; no bloquea la operación
+  }
 }
 
 export function useHoyTasks(initialDate: ISODate = todayISO()): UseHoyTasksReturn {
@@ -98,17 +119,26 @@ export function useHoyTasks(initialDate: ISODate = todayISO()): UseHoyTasksRetur
       done: false,
       repeatRule,
       position: tasksList.length,
-      createdAt: new Date().toISOString(),
+      createdAt: nowISO(),
       notificationId: null,
       reminderType: reminderType === 'none' ? null : reminderType,
     };
 
-    await tasksRepository.add(newTask);
-    if (newTask.time && newTask.reminderType) {
-      const nid = await TaskReminderService.scheduleForTask(newTask as TaskRow, date);
-      if (nid) await tasksRepository.update(newTask.id, { notificationId: nid });
+    try {
+      await tasksRepository.add(newTask);
+      if (newTask.time && newTask.reminderType) {
+        const nid = await safeSchedule(newTask as TaskRow, date);
+        if (nid) await tasksRepository.update(newTask.id, { notificationId: nid });
+      }
+    } finally {
+      // Si la tarea se creó para otro día, saltamos a ese día para que se vea.
+      if (date !== selectedDate) {
+        setSelectedDate(date);
+        setMonthViewDate(date);
+      } else {
+        await loadTasks(selectedDate, monthViewDate);
+      }
     }
-    await loadTasks(selectedDate, monthViewDate);
   };
 
   const updateTask = async (
@@ -125,7 +155,7 @@ export function useHoyTasks(initialDate: ISODate = todayISO()): UseHoyTasksRetur
 
     const task = await tasksRepository.getById(id);
     if (task && task.notificationId) {
-      await TaskReminderService.cancelForTask(task as TaskRow);
+      await safeCancel(task);
     }
 
     const updated = {
@@ -139,25 +169,28 @@ export function useHoyTasks(initialDate: ISODate = todayISO()): UseHoyTasksRetur
     };
 
     if (updated.time && updated.reminderType) {
-      const nid = await TaskReminderService.scheduleForTask(
-        { ...(task as TaskRow), ...updated },
-        date,
-      );
+      const nid = await safeSchedule({ ...(task as TaskRow), ...updated }, date);
       if (nid) updated.notificationId = nid;
     }
 
-    await tasksRepository.update(id, updated);
-    await loadTasks(selectedDate, monthViewDate);
+    try {
+      await tasksRepository.update(id, updated);
+    } finally {
+      await loadTasks(selectedDate, monthViewDate);
+    }
   };
 
   const deleteTask = async (id: string) => {
     haptics.warning();
     const task = await tasksRepository.getById(id);
     if (task) {
-      await TaskReminderService.cancelForTask(task as TaskRow);
+      await safeCancel(task);
     }
-    await tasksRepository.delete(id);
-    await loadTasks(selectedDate, monthViewDate);
+    try {
+      await tasksRepository.delete(id);
+    } finally {
+      await loadTasks(selectedDate, monthViewDate);
+    }
   };
 
   const toggleTask = async (id: string, currentDone: boolean) => {
@@ -166,8 +199,11 @@ export function useHoyTasks(initialDate: ISODate = todayISO()): UseHoyTasksRetur
     } else {
       haptics.tap();
     }
-    await tasksRepository.toggleDone(id, currentDone, selectedDate);
-    await loadTasks(selectedDate, monthViewDate);
+    try {
+      await tasksRepository.toggleDone(id, currentDone, selectedDate);
+    } finally {
+      await loadTasks(selectedDate, monthViewDate);
+    }
   };
 
   const doneCount = tasksList.filter((t) => t.done).length;

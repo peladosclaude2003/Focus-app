@@ -1,6 +1,6 @@
 import type { MinimalSet } from '@/features/gym/lib/gymCalculations';
 import { calculateSetVolume } from '@/features/gym/lib/gymCalculations';
-import { parseISODate, toISODate, type ISODate } from '@/shared/lib/dates';
+import { addDays, daysBetween, parseISODate, toISODate, type ISODate } from '@/shared/lib/dates';
 
 export interface DashboardWorkout {
   id: string;
@@ -21,6 +21,12 @@ export interface DashboardStats {
 export interface WeeklyRepsResult {
   dailyReps: number[]; // 7 días (Lunes a Domingo)
   percentageChange: number; // Porcentaje vs semana anterior
+}
+
+/** Lunes (ISO local) de la semana que contiene `iso`. Trabaja en días calendario: inmune a DST. */
+function mondayOf(iso: ISODate): ISODate {
+  const daysSinceMonday = (parseISODate(iso).getDay() + 6) % 7;
+  return addDays(iso, -daysSinceMonday);
 }
 
 /**
@@ -47,12 +53,7 @@ export function calculate8WeekVolumeTrend(
   setsList: DashboardSet[],
   refDateStr: ISODate,
 ): number[] {
-  const refDate = parseISODate(refDateStr);
-  const dayOfWeek = refDate.getDay(); // 0 = Dom, 1 = Lun, ...
-  // Distancia en días desde el lunes de la semana actual
-  const daysSinceMonday = (dayOfWeek + 6) % 7;
-  const currentMonday = new Date(refDate);
-  currentMonday.setDate(refDate.getDate() - daysSinceMonday);
+  const currentMonday = mondayOf(refDateStr);
 
   const weeks: number[] = new Array(8).fill(0);
 
@@ -65,8 +66,7 @@ export function calculate8WeekVolumeTrend(
 
   // Asignar cada entrenamiento a la semana correspondiente (0 = hace 7 semanas, 7 = semana actual)
   for (const w of workouts) {
-    const wDate = parseISODate(w.date);
-    const diffDays = Math.floor((wDate.getTime() - currentMonday.getTime()) / 86_400_000);
+    const diffDays = daysBetween(currentMonday, w.date);
     const weekIndex = 7 + Math.floor(diffDays / 7);
 
     if (weekIndex >= 0 && weekIndex < 8) {
@@ -86,15 +86,8 @@ export function calculateWeeklyDailyReps(
   setsList: DashboardSet[],
   refDateStr: ISODate,
 ): WeeklyRepsResult {
-  const refDate = parseISODate(refDateStr);
-  const dayOfWeek = refDate.getDay();
-  const daysSinceMonday = (dayOfWeek + 6) % 7;
-
-  const currentMonday = new Date(refDate);
-  currentMonday.setDate(refDate.getDate() - daysSinceMonday);
-
-  const prevMonday = new Date(currentMonday);
-  prevMonday.setDate(currentMonday.getDate() - 7);
+  const currentMonday = mondayOf(refDateStr);
+  const prevMonday = addDays(currentMonday, -7);
 
   const dailyReps = new Array(7).fill(0);
   let currentWeekTotalReps = 0;
@@ -107,18 +100,17 @@ export function calculateWeeklyDailyReps(
   }
 
   for (const w of workouts) {
-    const wDate = parseISODate(w.date);
     const reps = workoutRepsMap.get(w.id) ?? 0;
 
     // Verificar si cae en semana actual
-    const diffCurrent = Math.floor((wDate.getTime() - currentMonday.getTime()) / 86_400_000);
+    const diffCurrent = daysBetween(currentMonday, w.date);
     if (diffCurrent >= 0 && diffCurrent < 7) {
       dailyReps[diffCurrent] += reps;
       currentWeekTotalReps += reps;
     }
 
     // Verificar si cae en semana anterior
-    const diffPrev = Math.floor((wDate.getTime() - prevMonday.getTime()) / 86_400_000);
+    const diffPrev = daysBetween(prevMonday, w.date);
     if (diffPrev >= 0 && diffPrev < 7) {
       prevWeekTotalReps += reps;
     }

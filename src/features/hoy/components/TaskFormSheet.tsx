@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useTheme, spacing, radius } from '@/shared/theme';
-import { AppText, BottomSheet, PillButton } from '@/shared/ui';
+import { AppText, BottomSheet, PillButton, SheetTextInput } from '@/shared/ui';
 import { parseISODate, toISODate, type ISODate } from '@/shared/lib/dates';
 
 import type { TaskWithCategory } from '../repository/tasks.repository';
@@ -25,6 +25,15 @@ export interface TaskFormSheetProps {
     repeatRule?: RepeatRule,
     reminderType?: string,
   ) => void;
+}
+
+/** "HH:mm" → Date de hoy a esa hora local (sin parsear strings ISO híbridos). */
+function timeToDate(time: string): Date {
+  const date = new Date();
+  if (!time) return date;
+  const [h, m] = time.split(':').map(Number);
+  date.setHours(h ?? 0, m ?? 0, 0, 0);
+  return date;
 }
 
 export function TaskFormSheet({
@@ -121,7 +130,7 @@ export function TaskFormSheet({
         <AppText variant="caption" color="mute" style={styles.inputLabel}>
           ¿Qué toca hacer?
         </AppText>
-        <TextInput
+        <SheetTextInput
           style={[
             styles.textInput,
             {
@@ -192,7 +201,7 @@ export function TaskFormSheet({
         )}
         {showTimePicker && (
           <DateTimePicker
-            value={time ? new Date(`2000-01-01T${time}:00`) : new Date()}
+            value={timeToDate(time)}
             mode="time"
             display="default"
             onChange={handleTimeChange}

@@ -18,53 +18,59 @@ export interface MiniBarChartProps {
   delta?: string;
   bars: BarData[];
   maxHeight?: number;
+  /** Formato del número sobre cada barra (p. ej. 4520 → "4.5k"). */
+  formatValue?: (value: number) => string;
 }
 
 export function MiniBarChart({
-  title = 'This week',
-  subtitle = 'Daily reps',
-  value = '950 reps',
-  delta = '+36%',
-  bars = [
-    { label: 'S', value: 0 },
-    { label: 'M', value: 218 },
-    { label: 'T', value: 167 },
-    { label: 'W', value: 219 },
-    { label: 'T', value: 186 },
-    { label: 'F', value: 160 },
-    { label: 'S', value: 0 },
-  ],
+  title,
+  subtitle,
+  value,
+  delta,
+  bars,
   maxHeight = 70,
+  formatValue = String,
 }: MiniBarChartProps) {
   const { colors } = useTheme();
 
-  const maxVal = Math.max(...bars.map((b) => b.value)) || 1;
+  const maxVal = Math.max(0, ...bars.map((b) => b.value)) || 1;
 
   return (
     <Card>
       <View style={styles.topRow}>
         <View>
-          <AppText variant="caption" color="mute">
-            {title}
-          </AppText>
-          <AppText variant="caption" color="mute">
-            {subtitle}
-          </AppText>
+          {title ? (
+            <AppText variant="caption" color="mute">
+              {title}
+            </AppText>
+          ) : null}
+          {subtitle ? (
+            <AppText variant="caption" color="mute">
+              {subtitle}
+            </AppText>
+          ) : null}
         </View>
         {delta ? <DeltaChip value={delta} /> : null}
       </View>
 
-      <AppText variant="title" style={styles.valueText}>
-        {value}
-      </AppText>
+      {value ? (
+        <AppText variant="title" style={styles.valueText}>
+          {value}
+        </AppText>
+      ) : null}
 
       <View style={styles.chartRow}>
         {bars.map((bar, idx) => {
           const heightPercent = bar.value > 0 ? (bar.value / maxVal) * maxHeight : 0;
           return (
-            <View key={idx} style={styles.barColumn}>
+            <View
+              key={idx}
+              style={styles.barColumn}
+              accessible
+              accessibilityLabel={`${bar.label}: ${formatValue(bar.value)}`}
+            >
               <AppText variant="caption" color="mute" style={styles.barValText}>
-                {bar.value > 0 ? bar.value : ''}
+                {bar.value > 0 ? formatValue(bar.value) : ''}
               </AppText>
               <View style={[styles.barContainer, { height: maxHeight }]}>
                 {bar.value > 0 ? (

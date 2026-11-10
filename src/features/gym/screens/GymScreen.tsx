@@ -23,7 +23,7 @@ export function GymScreen() {
     weeklyAttendance,
     historicalTotalReps,
     historicalMaxWeight,
-    weeklyRepsData,
+    sessionProgress,
     weightDiff,
     isWorkoutActive,
     activeRoutineName,
@@ -75,7 +75,7 @@ export function GymScreen() {
           weeklyAttendance={weeklyAttendance}
           historicalTotalReps={historicalTotalReps}
           historicalMaxWeight={historicalMaxWeight}
-          weeklyRepsData={weeklyRepsData}
+          sessionProgress={sessionProgress}
           onLogWeight={logBodyWeight}
         />
       )}

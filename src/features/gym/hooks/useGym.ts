@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { parseISODate, todayISO, toISODate, type ISODate } from '@/shared/lib/dates';
+import { todayISO, toISODate, type ISODate } from '@/shared/lib/dates';
 import { haptics } from '@/shared/lib/haptics';
 import { uid } from '@/shared/lib/ids';
 
 import {
   calculate7DayMovingAverage,
   calculateMaxWeight,
+  calculateSessionProgress,
   calculateTotalReps,
+  calculateWeeklyAttendance,
   calculateWeightDiff,
   calculateWorkoutVolume,
   checkIsPersonalRecord,
   type MinimalSet,
+  type SessionProgress,
 } from '../lib/gymCalculations';
 import { calculateWeeklyDailyReps } from '../../inicio/lib/inicioCalculations';
 import { gymRepository } from '../repository/gym.repository';
@@ -34,6 +37,7 @@ export interface UseGymReturn {
   historicalTotalReps: number;
   historicalMaxWeight: number;
   weeklyRepsData: { dailyReps: number[]; percentageChange: number };
+  sessionProgress: SessionProgress;
   weightDiff: number | null;
   loading: boolean;
   // Sesión en vivo
@@ -51,23 +55,6 @@ export interface UseGymReturn {
   startRestTimer: (seconds?: number) => void;
   logBodyWeight: (kg: number, date?: ISODate) => Promise<void>;
   setWeightGoal: (goal: number) => void;
-}
-
-// Función auxiliar
-export function calculateWeeklyAttendance(workoutStartTimes: number[], refDate: ISODate): number {
-  const refTime = parseISODate(refDate).getTime();
-  const sevenDaysMs = 7 * 86_400_000;
-
-  const uniqueDays = new Set<string>();
-
-  workoutStartTimes.forEach((t) => {
-    const diff = refTime - t;
-    if (diff >= 0 && diff < sevenDaysMs) {
-      uniqueDays.add(toISODate(new Date(t)));
-    }
-  });
-
-  return uniqueDays.size;
 }
 
 export function useGym(): UseGymReturn {
@@ -291,8 +278,8 @@ export function useGym(): UseGymReturn {
 
   // Métricas derivadas
   const movingAverageKg = calculate7DayMovingAverage(bodyWeights);
-  const workoutStartTimes = workouts.map((w) => w.startTime);
-  const weeklyAttendance = calculateWeeklyAttendance(workoutStartTimes, todayISO());
+  const workoutDays = [...new Set(workouts.map((w) => toISODate(new Date(w.startTime))))];
+  const weeklyAttendance = calculateWeeklyAttendance(workoutDays, todayISO());
 
   const completedActive = activeSets
     .filter((s) => s.completed)
@@ -313,6 +300,7 @@ export function useGym(): UseGymReturn {
     durationMin: w.endTime ? Math.floor((w.endTime - w.startTime) / 60000) : 0,
   }));
   const weeklyRepsData = calculateWeeklyDailyReps(mappedWorkouts, completedHistorical, todayISO());
+  const sessionProgress = calculateSessionProgress(workouts, allSets);
 
   return {
     workouts,
@@ -327,6 +315,7 @@ export function useGym(): UseGymReturn {
     historicalTotalReps,
     historicalMaxWeight,
     weeklyRepsData,
+    sessionProgress,
     weightDiff,
     loading,
     isWorkoutActive,

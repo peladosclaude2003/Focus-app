@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { useTheme } from '@/shared/theme';
-import { AppText, BottomSheet, DeltaChip, PillButton } from '@/shared/ui';
+import { AppText, BottomSheet, DeltaChip, PillButton, SheetTextInput } from '@/shared/ui';
 
 import type { ActiveSet } from '../hooks/useGym';
 
@@ -109,7 +109,7 @@ export function ActiveWorkoutSheet({
                 <AppText variant="caption" color="mute" style={styles.inputLabel}>
                   Peso (kg)
                 </AppText>
-                <TextInput
+                <SheetTextInput
                   style={[styles.input, { color: colors.ink, borderColor: colors.cardBorder }]}
                   value={weightInput}
                   onChangeText={setWeightInput}
@@ -121,7 +121,7 @@ export function ActiveWorkoutSheet({
                 <AppText variant="caption" color="mute" style={styles.inputLabel}>
                   Reps
                 </AppText>
-                <TextInput
+                <SheetTextInput
                   style={[styles.input, { color: colors.ink, borderColor: colors.cardBorder }]}
                   value={repsInput}
                   onChangeText={setRepsInput}
@@ -203,7 +203,7 @@ export function ActiveWorkoutSheet({
         </View>
 
         {/* Finalizar Workout */}
-        <TextInput
+        <SheetTextInput
           style={[
             styles.input,
             styles.notesInput,

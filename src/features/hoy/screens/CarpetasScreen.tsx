@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 import { useTheme, spacing, radius } from '@/shared/theme';
-import { AppText, BottomSheet, PillButton, Screen } from '@/shared/ui';
+import { AppText, BottomSheet, PillButton, Screen, SheetTextInput } from '@/shared/ui';
 import { t } from '@/shared/i18n';
 import { useCategories } from '../hooks/useCategories';
 import type { CategoryRow } from '../repository/tasks.schema';
@@ -128,7 +128,7 @@ export function CarpetasScreen() {
           <AppText variant="title" style={styles.sheetTitle}>
             {editingCat ? t.carpetas.rename : t.carpetas.add}
           </AppText>
-          <TextInput
+          <SheetTextInput
             style={[
               styles.input,
               { backgroundColor: colors.bg, color: colors.ink, borderColor: colors.cardBorder },

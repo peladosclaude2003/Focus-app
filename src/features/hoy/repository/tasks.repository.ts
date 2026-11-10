@@ -1,8 +1,10 @@
 import { and, asc, eq, lte, isNotNull } from 'drizzle-orm';
 
 import { db, sqlite } from '@/db/client';
-import { parseISODate, type ISODate } from '@/shared/lib/dates';
+import { type ISODate } from '@/shared/lib/dates';
 import { uid } from '@/shared/lib/ids';
+
+import { taskOccursOn } from '../lib/recurrence';
 
 import {
   tasks,
@@ -37,34 +39,14 @@ export const tasksRepository = {
       .all();
 
     const completedSet = new Set(completions.map((c) => c.taskId));
-    const targetDateObj = parseISODate(targetDate);
-    const dayOfWeek = targetDateObj.getDay();
-    const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
 
-    const result: TaskWithCategory[] = [];
-
-    for (const row of allCandidates) {
-      const t = row.task;
-      const cat = row.category;
-      let matches = false;
-      if (t.repeatRule === 'none') {
-        matches = t.date === targetDate;
-      } else if (t.repeatRule === 'daily') {
-        matches = true;
-      } else if (t.repeatRule === 'weekdays') {
-        matches = isWeekday;
-      } else if (t.repeatRule === 'monthly') {
-        matches = parseISODate(t.date as ISODate).getDate() === targetDateObj.getDate();
-      }
-
-      if (matches) {
-        result.push({
-          ...t,
-          done: completedSet.has(t.id),
-          category: cat,
-        });
-      }
-    }
+    const result: TaskWithCategory[] = allCandidates
+      .filter((row) => taskOccursOn(row.task, targetDate))
+      .map((row) => ({
+        ...row.task,
+        done: completedSet.has(row.task.id),
+        category: row.category,
+      }));
     result.sort((a, b) => {
       if (!a.time && b.time) return -1;
       if (a.time && !b.time) return 1;
@@ -148,9 +130,12 @@ export const tasksRepository = {
           JOIN tasks t ON t.date <= d.d
           WHERE 
             t.repeat_rule = 'daily'
-            OR (t.repeat_rule = 'none' AND t.date = d.d)
+            OR (t.repeat_rule NOT IN ('daily', 'weekdays', 'monthly') AND t.date = d.d)
             OR (t.repeat_rule = 'weekdays' AND cast(strftime('%w', d.d) as integer) BETWEEN 1 AND 5)
-            OR (t.repeat_rule = 'monthly' AND cast(strftime('%d', d.d) as integer) = cast(strftime('%d', t.date) as integer))
+            OR (t.repeat_rule = 'monthly' AND cast(strftime('%d', d.d) as integer) = min(
+              cast(strftime('%d', t.date) as integer),
+              cast(strftime('%d', d.d, 'start of month', '+1 month', '-1 day') as integer)
+            ))
         )
       SELECT 
         dt.date,

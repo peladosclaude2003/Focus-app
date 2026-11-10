@@ -1,9 +1,23 @@
 import { StyleSheet, View, ScrollView } from 'react-native';
 
-import { MiniBarChart, StatTile } from '@/shared/ui';
+import { t } from '@/shared/i18n';
+import { parseISODate, type ISODate } from '@/shared/lib/dates';
+import { AppText, Card, MiniBarChart, StatTile } from '@/shared/ui';
 
 import { BodyWeightSection } from './BodyWeightSection';
-import { BodyWeightRow } from '../repository/gym.schema';
+import type { SessionProgress } from '../lib/gymCalculations';
+import type { BodyWeightRow } from '../repository/gym.schema';
+
+/** 4520 → "4.5k" para que quepa sobre la barra. */
+function compactNumber(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : String(n);
+}
+
+/** "2026-11-10" → "10/11" */
+function shortDate(iso: ISODate): string {
+  const d = parseISODate(iso);
+  return `${d.getDate()}/${d.getMonth() + 1}`;
+}
 
 interface ProgresoGymTabProps {
   bodyWeights: BodyWeightRow[];
@@ -13,7 +27,7 @@ interface ProgresoGymTabProps {
   weeklyAttendance: number;
   historicalTotalReps: number;
   historicalMaxWeight: number;
-  weeklyRepsData: { dailyReps: number[]; percentageChange: number };
+  sessionProgress: SessionProgress;
   onLogWeight: (kg: number) => Promise<void>;
 }
 
@@ -25,9 +39,12 @@ export function ProgresoGymTab({
   weeklyAttendance,
   historicalTotalReps,
   historicalMaxWeight,
-  weeklyRepsData,
+  sessionProgress,
   onLogWeight,
 }: ProgresoGymTabProps) {
+  const { points, percentageChange } = sessionProgress;
+  const lastPoint = points[points.length - 1];
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* StatTiles (Asistencia, Reps totales, Peso Máx) */}
@@ -45,26 +62,30 @@ export function ProgresoGymTab({
         />
       </View>
 
-      {/* Gráfica Semanal de Repeticiones */}
-      <MiniBarChart
-        title="Esta semana"
-        subtitle="Reps diarias"
-        value={`${weeklyRepsData.dailyReps.reduce((a, b) => a + b, 0)} reps`}
-        delta={
-          weeklyRepsData.percentageChange !== 0
-            ? `${weeklyRepsData.percentageChange > 0 ? '+' : ''}${weeklyRepsData.percentageChange}%`
-            : '0%'
-        }
-        bars={[
-          { label: 'L', value: weeklyRepsData.dailyReps[0] ?? 0 },
-          { label: 'M', value: weeklyRepsData.dailyReps[1] ?? 0 },
-          { label: 'M', value: weeklyRepsData.dailyReps[2] ?? 0 },
-          { label: 'J', value: weeklyRepsData.dailyReps[3] ?? 0 },
-          { label: 'V', value: weeklyRepsData.dailyReps[4] ?? 0 },
-          { label: 'S', value: weeklyRepsData.dailyReps[5] ?? 0 },
-          { label: 'D', value: weeklyRepsData.dailyReps[6] ?? 0 },
-        ]}
-      />
+      {/* Progreso por sesión (volumen de cada entrenamiento terminado) */}
+      {points.length > 0 ? (
+        <MiniBarChart
+          title={t.gym.progressTitle}
+          subtitle={t.gym.progressSubtitle}
+          value={lastPoint ? `${lastPoint.volume.toLocaleString('es-ES')} kg` : undefined}
+          delta={
+            percentageChange !== null
+              ? `${percentageChange > 0 ? '+' : ''}${percentageChange}%`
+              : undefined
+          }
+          bars={points.map((p) => ({ label: shortDate(p.date), value: p.volume }))}
+          formatValue={compactNumber}
+        />
+      ) : (
+        <Card>
+          <AppText variant="caption" color="mute">
+            {t.gym.progressTitle}
+          </AppText>
+          <AppText variant="body" color="mute" style={styles.emptyText}>
+            {t.gym.progressEmpty}
+          </AppText>
+        </Card>
+      )}
 
       {/* Sección de Peso Corporal & Media Móvil */}
       <BodyWeightSection
@@ -81,6 +102,9 @@ export function ProgresoGymTab({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  emptyText: {
+    marginTop: 6,
   },
   tileRow: {
     flexDirection: 'row',

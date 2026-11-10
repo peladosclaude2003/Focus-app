@@ -66,6 +66,11 @@ export function HoyScreen() {
     repeatRule?: any,
     reminderType?: string,
   ) => {
+    // Si hay un filtro de carpeta activo distinto a la de la tarea, lo quitamos:
+    // si no, la tarea se guarda pero queda oculta por el filtro.
+    if (selectedCategoryId && selectedCategoryId !== categoryId) {
+      setSelectedCategoryId(null);
+    }
     if (editingTask) {
       await updateTask(editingTask.id, title, date, categoryId, time, repeatRule, reminderType);
     } else {

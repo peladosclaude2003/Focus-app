@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { t } from '@/shared/i18n';
 import { useTheme } from '@/shared/theme';
-import { AppText, BottomSheet, PillButton } from '@/shared/ui';
+import { AppText, BottomSheet, PillButton, SheetTextInput } from '@/shared/ui';
 
 export interface ResetConfirmSheetProps {
   visible: boolean;
@@ -30,7 +30,7 @@ export function ResetConfirmSheet({ visible, onClose, onConfirm }: ResetConfirmS
         {t.racha.relapseConfirmBody}
       </AppText>
 
-      <TextInput
+      <SheetTextInput
         style={[
           styles.textInput,
           {

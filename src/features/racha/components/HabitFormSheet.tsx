@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
-import { BottomSheet, AppText } from '@/shared/ui';
+import { BottomSheet, AppText, SheetTextInput } from '@/shared/ui';
 import { useTheme, spacing, radius } from '@/shared/theme';
 import type { HabitRow } from '../repository/habits.schema';
-import { formatLongDate } from '@/shared/lib/dates';
+import { formatLongDate, toISODate } from '@/shared/lib/dates';
 
 interface HabitFormSheetProps {
   visible: boolean;
@@ -103,7 +103,7 @@ export function HabitFormSheet({ visible, onClose, habit, onSave }: HabitFormShe
           {habit ? 'Editar hábito' : 'Nuevo hábito'}
         </AppText>
 
-        <TextInput
+        <SheetTextInput
           style={[
             styles.input,
             { backgroundColor: colors.bg, color: colors.ink, borderColor: colors.cardBorder },
@@ -124,7 +124,7 @@ export function HabitFormSheet({ visible, onClose, habit, onSave }: HabitFormShe
             onPress={() => setShowDatePicker(true)}
           >
             <MaterialCommunityIcons name="calendar" size={20} color={colors.ink} />
-            <AppText>{formatLongDate(date.toISOString().split('T')[0] as any)}</AppText>
+            <AppText>{formatLongDate(toISODate(date))}</AppText>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.dateBtn, { backgroundColor: colors.bg, borderColor: colors.cardBorder }]}

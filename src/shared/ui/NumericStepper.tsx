@@ -1,7 +1,8 @@
-import { StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, typeScale } from '@/shared/theme';
-import { AppText } from '@/shared/ui';
+import { AppText } from './AppText';
+import { SheetTextInput } from './SheetTextInput';
 
 interface NumericStepperProps {
   label: string;
@@ -51,7 +52,7 @@ export function NumericStepper({
           <Ionicons name="remove" size={20} color={colors.ink} />
         </TouchableOpacity>
 
-        <TextInput
+        <SheetTextInput
           style={[styles.input, typeScale.label, { color: colors.ink }]}
           value={String(value)}
           onChangeText={handleChangeText}

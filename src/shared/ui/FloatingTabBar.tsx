@@ -5,7 +5,7 @@ import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useKeyboard } from 'react-native-keyboard-controller';
+import { useKeyboardState } from 'react-native-keyboard-controller';
 
 import { haptics } from '@/shared/lib/haptics';
 import { borders, palette, radii, spacing } from '@/shared/theme';
@@ -28,13 +28,12 @@ const BOTTOM_GAP = spacing.s;
 
 export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
-  
+
   // Detecta si hay algún BottomSheet abierto (o un entreno activo) pidiendo ocultar la barra
   const isManuallyHidden = useIsTabBarHidden();
-  
+
   // Detecta si el teclado está abierto
-  const { height: keyboardHeight } = useKeyboard();
-  const isKeyboardOpen = keyboardHeight > 0;
+  const isKeyboardOpen = useKeyboardState((state) => state.isVisible);
 
   const isHidden = isManuallyHidden || isKeyboardOpen;
 
@@ -59,11 +58,7 @@ export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) 
   return (
     <Animated.View
       pointerEvents={isHidden ? 'none' : 'box-none'}
-      style={[
-        styles.wrapper,
-        { bottom: insets.bottom + BOTTOM_GAP },
-        animatedStyle,
-      ]}
+      style={[styles.wrapper, { bottom: insets.bottom + BOTTOM_GAP }, animatedStyle]}
     >
       <BlurView intensity={80} tint="dark" style={styles.pill} accessibilityRole="tablist">
         <View style={styles.content}>

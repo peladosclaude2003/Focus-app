@@ -3,6 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 import { db } from '@/db/client';
+import { nowISO } from '@/shared/lib/dates';
 import { bodyWeights, exercises, sets, workouts } from '@/features/gym/repository/gym.schema';
 import { tasks } from '@/features/hoy/repository/tasks.schema';
 import { habitResets, habits } from '@/features/racha/repository/habits.schema';
@@ -41,7 +42,7 @@ export const backupService = {
         exercises: allExercises,
         sets: allSets,
         bodyWeights: allWeights,
-        timestamp: new Date().toISOString(),
+        timestamp: nowISO(),
         version: 1,
       };
 

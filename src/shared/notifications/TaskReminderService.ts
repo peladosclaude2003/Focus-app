@@ -1,6 +1,7 @@
 import { parseISODate, toISODate, type ISODate } from '../lib/dates';
 import { NotificationService, Channels } from './NotificationService';
 import type { TaskRow } from '@/features/hoy/repository/tasks.schema';
+import { taskOccursOn } from '@/features/hoy/lib/recurrence';
 
 export const TaskReminderService = {
   // Calculates the fire date for a specific target day
@@ -73,18 +74,7 @@ export const TaskReminderService = {
         d.setDate(d.getDate() + i);
         const isoDate = toISODate(d) as ISODate;
 
-        let matches = false;
-        if (task.repeatRule === 'daily') {
-          matches = true;
-        } else if (task.repeatRule === 'weekdays') {
-          const day = d.getDay();
-          matches = day >= 1 && day <= 5;
-        } else if (task.repeatRule === 'monthly') {
-          const start = parseISODate(task.date as ISODate);
-          matches = d.getDate() === start.getDate();
-        } else if (task.repeatRule === 'none' && task.date === isoDate) {
-          matches = true;
-        }
+        const matches = taskOccursOn(task, isoDate);
 
         if (matches) {
           await this.scheduleForTask(task, isoDate);

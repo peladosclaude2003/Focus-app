@@ -14,3 +14,4 @@ export * from './Screen';
 export * from './StatTile';
 export * from './SegmentedControl';
 export * from './NumericStepper';
+export * from './SheetTextInput';

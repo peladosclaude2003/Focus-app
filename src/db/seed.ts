@@ -11,7 +11,14 @@ import {
   routineDays,
   routineExercises,
 } from './schema';
-import { addDays, nowISO, todayISO } from '@/shared/lib/dates';
+import { addDays, nowISO, parseISODate, todayISO, type ISODate } from '@/shared/lib/dates';
+
+/** Epoch ms de `iso` a la hora local indicada. */
+const atLocalHour = (iso: ISODate, hour: number): number => {
+  const d = parseISODate(iso);
+  d.setHours(hour, 0, 0, 0);
+  return d.getTime();
+};
 import { uid } from '@/shared/lib/ids';
 
 /**
@@ -71,7 +78,7 @@ export async function seedDevData(): Promise<void> {
       .values({
         id: uid(),
         name: 'Comida chatarra',
-        startAt: new Date(`${tenDaysAgo}T00:00:00Z`).getTime(),
+        startAt: atLocalHour(tenDaysAgo, 0),
         bestMs: 14 * 24 * 60 * 60 * 1000,
         icon: 'food-apple',
         color: '#ef4444',
@@ -95,8 +102,8 @@ export async function seedDevData(): Promise<void> {
       .insert(workouts)
       .values({
         id: workoutId,
-        startTime: new Date(`${yesterday}T10:00:00Z`).getTime(),
-        endTime: new Date(`${yesterday}T11:00:00Z`).getTime(),
+        startTime: atLocalHour(yesterday, 10),
+        endTime: atLocalHour(yesterday, 11),
         name: 'Pecho y Piernas',
         notes: 'Buena intensidad y excelente técnica.',
         status: 'completed',

@@ -1,4 +1,4 @@
-import { parseISODate, type ISODate } from '@/shared/lib/dates';
+import { daysBetween, toISODate, type ISODate } from '@/shared/lib/dates';
 
 export interface MinimalSet {
   weight: number;
@@ -89,12 +89,75 @@ export function calculate7DayMovingAverage(records: WeightRecord[]): number[] {
  * Calcula el número de entrenamientos asistidos en los últimos 7 días.
  */
 export function calculateWeeklyAttendance(workoutDates: ISODate[], refDate: ISODate): number {
-  const refTime = parseISODate(refDate).getTime();
-  const sevenDaysMs = 7 * 86_400_000;
-
+  // Días calendario (no milisegundos): incluye hoy y es inmune a cambios de horario.
   return workoutDates.filter((dateStr) => {
-    const t = parseISODate(dateStr).getTime();
-    const diff = refTime - t;
-    return diff >= 0 && diff < sevenDaysMs;
+    const diff = daysBetween(dateStr, refDate);
+    return diff >= 0 && diff < 7;
   }).length;
+}
+
+export interface SessionWorkout {
+  id: string;
+  startTime: number; // epoch ms
+  endTime: number | null;
+}
+
+export interface SessionSet extends MinimalSet {
+  workoutId: string;
+  completed: boolean;
+}
+
+export interface SessionProgressPoint {
+  workoutId: string;
+  date: ISODate;
+  volume: number; // kg × reps de la sesión
+  reps: number;
+}
+
+export interface SessionProgress {
+  points: SessionProgressPoint[]; // orden cronológico (la más reciente al final)
+  /** Variación % del volumen de la última sesión vs la anterior (null si no hay con qué comparar). */
+  percentageChange: number | null;
+}
+
+/**
+ * Progreso por sesión: volumen y reps de las últimas `limit` sesiones terminadas
+ * que tengan al menos una serie completada. Sustituye a la vista por días de la semana,
+ * que no reflejaba si el usuario está progresando.
+ */
+export function calculateSessionProgress(
+  workoutsList: SessionWorkout[],
+  setsList: SessionSet[],
+  limit = 8,
+): SessionProgress {
+  const byWorkout = new Map<string, MinimalSet[]>();
+  for (const s of setsList) {
+    if (!s.completed) continue;
+    const list = byWorkout.get(s.workoutId) ?? [];
+    list.push(s);
+    byWorkout.set(s.workoutId, list);
+  }
+
+  const points = workoutsList
+    .filter((w) => w.endTime !== null && byWorkout.has(w.id))
+    .sort((a, b) => a.startTime - b.startTime)
+    .slice(-limit)
+    .map((w) => {
+      const wSets = byWorkout.get(w.id) ?? [];
+      return {
+        workoutId: w.id,
+        date: toISODate(new Date(w.startTime)),
+        volume: Math.round(calculateWorkoutVolume(wSets)),
+        reps: calculateTotalReps(wSets),
+      };
+    });
+
+  const last = points[points.length - 1];
+  const prev = points[points.length - 2];
+  const percentageChange =
+    last && prev && prev.volume > 0
+      ? Math.round(((last.volume - prev.volume) / prev.volume) * 100)
+      : null;
+
+  return { points, percentageChange };
 }

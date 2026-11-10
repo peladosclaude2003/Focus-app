@@ -1,6 +1,6 @@
 import BottomSheet, { BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import React, { useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { spacing, useTheme, radius } from '@/shared/theme';
 import { useHideTabBar } from './useTabBarStore';
@@ -68,6 +68,7 @@ export const BottomSheetComponent = ({
       enableDynamicSizing={false}
       enablePanDownToClose={true}
       keyboardBehavior="interactive"
+      keyboardBlurBehavior="restore"
       android_keyboardInputMode="adjustResize"
       handleIndicatorStyle={{ backgroundColor: colors.mute, width: 36, height: 4 }}
       backgroundStyle={{

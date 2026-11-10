@@ -93,6 +93,9 @@ export const es = {
   gym: {
     title: 'Mi gym',
     empty: 'Aquí registrarás tus días de gym, tu peso y tus entrenamientos.',
+    progressTitle: 'Progreso por sesión',
+    progressSubtitle: 'Volumen (kg × reps), últimas sesiones',
+    progressEmpty: 'Termina tu primer entrenamiento para ver tu progreso.',
   },
   ajustes: {
     title: 'Ajustes',
